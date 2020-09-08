@@ -1,0 +1,666 @@
+---
+title: "ROHs and IBD analyses (barplots)"
+output: html_notebook
+---
+1. Libraries
+```{r}
+library(tidyr)
+library(ggplot2)
+library(sjmisc)
+library(magrittr)
+library(igraph)
+```
+
+
+
+2. Load files
+```{r}
+#set directory
+datapath = '~\\masterBIOINFO\\practiques_tesis\\practiques\\data'
+setwd(datapath)
+
+## ROHS FILES###
+#load individual files & snp files
+indfile = 'mergeLAZ_FM_PJLYRICEU_comsnp_ld_roh.hom.indiv'
+snpfile = 'mergeLAZ_FM_PJLYRICEU_comsnp_ld_roh.hom'
+individuals = read.table(indfile, header= T)
+snproh = read.table(snpfile, header= T)
+#change size of roh's lenghts
+individuals$mb = individuals$KB/1000
+snproh$mb = snproh$KB/1000
+
+###IBDS FILES###
+#ibdfile = 'IBDsubset_ibd.ibd'
+ibdfile = 'iberianpeninsula_allsnp_ids_ibd.ibd'
+ibdtable= read.table(ibdfile, header= F)
+
+ibdtable$len = ibdtable$V7 -ibdtable$V6
+ibdtable$lenmb = ibdtable$len / 1000000
+
+```
+
+3. Define colours (palette)
+```{r}
+#blue
+blue = rgb(128, 156, 200, maxColorValue = 255)
+#pink
+pink = rgb(208, 146, 166, maxColorValue = 255)
+#yellow
+yell = rgb(236, 214, 052, maxColorValue = 255)
+#orange
+oran = rgb(244, 164, 072, maxColorValue = 255)
+#purple
+purp = rgb(175, 129, 192, maxColorValue = 255)
+#green
+gree = rgb(120, 208, 104, maxColorValue = 255)
+
+dblue = rgb(032, 058, 123, maxColorValue = 255)
+dgree= rgb(026, 139, 017, maxColorValue = 255)
+#targed red
+redd = rgb(216, 000, 047, maxColorValue = 255)
+
+```
+
+###Analyses for rohs by individual ###
+
+4.1 Group populations (verbose)
+
+```{r}
+spain =c("Basque", "Spanish", "Spanish_North", "Canary_Islander")
+midleeast = c("Armenian", "Assyrian","Iranian", "Egyptian","Abkhasian", "Georgian","Jordanian", "Lebanese","Iranian_Bandari","Lebanese_Christian","Lebanese_Muslim","Druze", "Palestinian", "BedouinA", "BedouinB","Saudi","Syrian","Turkish","Jew_Turkish","Jew_Yemenite",  "Yemen","Jew_Georgian", "Jew_Iranian", "Jew_iraqi")
+europe = c("Albanian","Greek","Bulgarian", "Croatian","Estonian","Lithuanian","Ukrainian",  "Hungarian","Belarusian","Romanian","Norwegian","Icelandic","Finnish", "Saami_WGA" ,"Italian_South", "Cypriot", "Czech","Sicilian",  "Maltese","Italian_North", "English", "Scottish" , "Orcadian","Basque", "Spanish", "Canary_Islander","Spanish_North","French","Jew_Ashkenazi", "FAG", "Russian")
+cauc = c( "Adygei", "Aleut",     "Aleut_Tlingit",  "Altaian","Balkar", "Chechen",   "Chukchi",   "Chuvash",  "Dolgan",   "Eskimo","Even",  "Ignore_Adygei(relative_of_HGDP01382)" ,"Itelmen", "Kalmyk","Koryak",    "Kumyk","Lezgin",   "Mansi", "Mordovian","Nganasan",  "Nogai","North_Ossetian", "Selkup", "Tuvinian","Ulchi", "Yakut","Tubalar", "Yukagir")
+mer = c("MER")
+sar = c("Sardinian")
+yri = c("YRI")
+pjl= c("PJL")
+ceu = c("CEU")
+africa = c("Algerian","Jew_Libyan","Jew_Moroccan","Jew_Tunisian","Libyan","Moroccan","Mozabite","Tunisian")
+
+
+pops1 = list(cauc,midleeast, europe,    sar, mer, pjl, ceu, yri, africa, spain)
+popscolour = c(pink, oran, blue, blue, redd, yell,blue, gree, gree, purp)
+#popsoutine = c(pink, oran, blue, blue, redd, yell, "black", "black", gree)
+```
+classify sub pops (pch)
+```{r}
+basque = c("Basque" , "Spanish_North" ) #square
+jew = c("Jew_Ashkenazi","Jew_Georgian", "Jew_Iranian", "Jew_iraqi", "Jew_Libyan", "Jew_Moroccan", "Jew_Tunisian", "Jew_Turkish", "Jew_Yemenite") #triangle
+roma = c('FAG', 'PJL') #PCH 25 inverted trianglet
+target = c('MER')
+refer = c('CEU', 'YRI')
+#sumary + assgign colour
+
+
+pops2 = list( target, '', basque,jew,  roma, refer)
+pops2pch = c(19, 1,0,2,6, 10)
+pchlabels = c("Mercheros", "", "basque", "jew",  "roma", "refer")
+
+```
+
+
+5. add labels
+```{r}
+#column for population
+individuals$colour="grey"
+#individuals$outcolour="grey"
+
+for (i in 1:length(pops1)){
+  subpop = pops1[[i]]
+  for (j in subpop){
+    individuals$colour[individuals$FID==j]=popscolour[i]
+  }  
+}
+
+#column for shape
+individuals$shp = 1
+#pch
+for (i in 1:length(pops2)){
+  subpop = pops2[[i]]
+  #print(subpop)
+  #print(pops2pch[i])
+  for (j in subpop){
+    #print(j)
+    individuals$shp[individuals$FID==j]=pops2pch[i]
+  }
+}
+#p <- as_factor(individuals$shp)
+```
+
+
+6. PLOT ROHs by individual
+```{r}
+#kb - lentgh of all ROH
+#nseg - number of ROH segments , (nroh)
+labbb = c("Europe", "Basque", "Spanish Roma", "CEU", "Ashkenazi Jews", "Nord Africa", "African Jews", "Yoruba", "Middle East","Middle East Jews","Punjabi", "Rusia", "Mercheros" )
+pchs = c(1, 0,6,10,2,1,2,10,1,2,6,1,19)
+
+#nolegends
+ggplot(data=individuals, aes(x=mb,y=NSEG, color=colour,shape=shp)) +
+  geom_point() +
+  labs( x = "Total length in ROH (Mb)",  y= "Number of ROH")+
+  scale_color_identity(name = "location",
+                       breaks= colours,
+                       labels =  labbb)+
+  scale_continuous_identity(name = "location",
+                       #c("mer", "b", "basque","d", "e", "ref"),
+                       #c(19, 1, 0, 2, 6, 10),
+                       breaks = pchs,
+                       labels =  labbb,
+                       aesthetics = 'shape') +
+
+  geom_point(data=individuals[individuals$FID=='MER',], aes(x=mb,y=NSEG) )
+
+```
+
+
+```{r}
+#subgroup 
+popssubg3 = c("CEU" ,"MER","YRI")
+individuals4 =individuals[individuals$FID %in% popssubg3,]
+ggplot(data=individuals4, aes(x=mb,y=NSEG, color=colour,shape=shp)) +
+  geom_point() +
+  labs( x = "Total length in ROH (Mb)",  y= "Number of ROH")+
+  scale_color_identity(name = "location",
+                       breaks= c(redd, blue,purp,  pink, dblue,gree,  dgree, yell, oran ),) +
+  scale_shape_identity(name = "location",
+                       breaks = as.character(c(19, 1,1,1,  1, 1,  1,    1,     1)),) +
+  scale_fill_identity(guide = guide_legend())+
+  geom_point(data=individuals[individuals$FID=='MER',], aes(x=mb,y=NSEG) )
+```
+
+###Analysis for the barplots##
+
+1. Group them
+```{r}
+p_ib= c("Spanish")
+basque = c("Basque", "Spanish_North")
+sard = c("Sardinian")
+mer = c("MER")
+yri = c("YRI")
+pjl= c("PJL")
+roma = c("FAG")
+ceu = c("CEU")
+mozabite = c("Mozabite")
+
+p_ib2 = c("Spanish_Castilla_y_Leon_IBS" , "Spanish_Castilla_la_Mancha_IBS" ,"Spanish_Extremadura_IBS", "Spanish_Cantabria_IBS" , "Spanish_Cataluna_IBS","Spanish_Valencia_IBS" , "Spanish_Baleares_IBS" ,       "Spanish_Murcia_IBS","Spanish_Andalucia_IBS" ,  "Spanish_Aragon_IBS","Spanish_Galicia_IBS")
+#p_ib2 = c("Spanish_Castilla_y_Leon_IBS" , "Spanish_Castilla_la_Mancha_IBS" ,"Spanish_Extremadura_IBS", "Spanish_Cantabria_IBS" , "Spanish_Cataluna_IBS","Spanish_Valencia_IBS" ,        "Spanish_Murcia_IBS","Spanish_Andalucia_IBS" ,  "Spanish_Aragon_IBS","Spanish_Galicia_IBS")
+basque2 = c("Spanish_Pais_Vasco_IBS" ,"Basque_Spanish",'Basque_French' ) 
+pops3=list(mer, p_ib2, basque2)
+pops2name3 = c( 'Mercheros','Spain','Basques')
+pops2colour3 = c(redd,blue, purp)
+
+pops2 = list(mer, p_ib, basque, sard,ceu, mozabite, yri,  pjl,  roma)
+pops2name = c( 'Mercheros','Spain','Basques', 'Sardinia','Northern Europeans from Utah','Mozabite','Youruba','Punjabi',   'Roma' )
+pops2colour = c(redd,blue, purp, pink,dblue, gree, dgree , yell,   oran)
+
+
+#ibdtable
+ibdtable=separate(ibdtable, V1, c("pop", "id"), sep="_(?=[^_]+$)")
+ibdtable=separate(ibdtable, V3, c("pop2", "id2"), sep="_(?=[^_]+$)")
+subibdtable = ibdtable[ ibdtable$pop== ibdtable$pop2,] #save just comparisons within pop
+
+```
+
+2. apply filter for lenght = total lenghts by individuals
+```{r}
+mblim = c(0.5,1,2,4,8,16)
+#groups length intervals
+len_catg = c("<0.5","0.5-1","1-2","2-4","4-8", "8-16", ">16")
+
+#assign the value
+snproh$len_group="<0.5"
+for (i in 1:length(mblim)){
+  snproh$len_group[snproh$mb > mblim[i]] = len_catg[i+1]
+}
+subibdtable$len_group="<0.5"
+for (i in 1:length(subibdtable)){
+  subibdtable$len_group[subibdtable$lenmb > mblim[i]] = len_catg[i+1]
+}
+
+len_catg = len_catg[2:7]
+
+
+#create new dataset with snp data mean by individual
+IID <-unique(snproh$IID)
+ind_rohs <-data.frame(IID)
+
+#for each group create a column
+for(i in 1:length(len_catg)){
+  ind_rohs[,len_catg[i]]=0
+}
+
+ind_rohs$pop="NOT ASSIGNED" #avoid the annoying na
+ind_rohsnum = ind_rohs
+
+
+#assign the total roh total lenght (by indivivual and toh group lenght)
+for (i in IID){
+  for(j in 1:length(len_catg)){
+  rohs = snproh$mb[snproh$IID==i & snproh$len_group==len_catg[j]]
+  ind_rohs[,len_catg[j]][ind_rohs$IID==i] = sum(rohs)
+  ind_rohsnum[,len_catg[j]][ind_rohsnum$IID==i] = length(rohs)
+  }
+  ind_rohs$FID[ind_rohs$IID==i]=as.character(snproh$FID[snproh$IID==i])[1]
+  ind_rohsnum$FID[ind_rohsnum$IID==i]=as.character(snproh$FID[snproh$IID==i])[1]
+}
+
+#assign the location group
+for (i in 1:length(pops2)){
+  subpop = pops2[[i]]
+  for (j in subpop){
+    ind_rohs$pop[ind_rohs$FID==j] = pops2name[i]
+    ind_rohsnum$pop[ind_rohsnum$FID==j] = pops2name[i]
+  }  
+}
+
+
+
+
+```
+
+3. get populations means  + stdev
+```{r}
+#create summary dataset
+rohlen=c()
+pop= c()
+for (i in 1:length(pops2name)){
+  for (j in 1:length(len_catg)){
+    pop= c(pop, pops2name[i])
+    rohlen= c(rohlen, len_catg[j])
+  }
+}
+barplot_table <- data.frame(rohlen,pop)
+#add mean and stdev columns
+barplot_table$mean = 0
+barplot_table$stdev= 0
+barplot_table$nummean = 0
+barplot_table$numstdev= 0
+barplot_table$repr= 0
+
+#assgin values
+for (i in 1:length(pops2name)){
+  pop = pops2name[i]
+  for (j in 1:length(len_catg)){
+    #rohs length
+    listpop=ind_rohs[,len_catg[j]][ind_rohs$pop==pop]
+    barplot_table$mean[barplot_table$pop== pop & barplot_table$rohlen == len_catg[j]] = mean(listpop)
+    barplot_table$stdev[barplot_table$pop== pop & barplot_table$rohlen == len_catg[j]] = sd(listpop)
+    #rohs num
+    listpop=ind_rohsnum[,len_catg[j]][ind_rohsnum$pop==pop]
+    barplot_table$nummean[barplot_table$pop== pop & barplot_table$rohlen == len_catg[j]] = mean(listpop)
+    barplot_table$numstdev[barplot_table$pop== pop & barplot_table$rohlen == len_catg[j]] = sd(listpop)
+    #% individuals
+    barplot_table$repr[barplot_table$pop== pop & barplot_table$rohlen == len_catg[j]] = 100 * length(listpop[listpop!=0]) /(length(listpop))
+  }
+}
+
+```
+
+5. plot
+```{r}
+barplot_table$rohlen <- factor(barplot_table$rohlen, levels = len_catg)
+barplot_table$pop <- factor(barplot_table$pop, levels = pops2name)
+
+
+ggplot(barplot_table, aes(x=as.factor(rohlen), y=mean, fill=pop)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='black') +
+  geom_errorbar(aes(ymin=mean-stdev, ymax=mean+stdev), width=.2,position=position_dodge(.9))+
+  labs( x = "ROH length category (Mb)",  y= "mean total ROH length (Mb)")+
+  scale_fill_manual(values=pops2colour, labels=pops2name)+
+  theme(legend.position="bottom")
+
+ggplot(barplot_table, aes(x=as.factor(rohlen), y=nummean, fill=pop)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='black') +
+  geom_errorbar(aes(ymin=nummean-numstdev, ymax=nummean+numstdev), width=.2,position=position_dodge(.9))+
+  labs( x = "ROH length category (Mb)",  y= "mean total number of ROH")+
+  scale_fill_manual(values=pops2colour, labels=pops2name)+
+  theme(legend.position="bottom")
+
+ggplot(barplot_table, aes(x=as.factor(rohlen), y=repr, fill=pop)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='black') +
+  labs( x = " ROH length category (Mb)",  y= "% of individuals")+
+  scale_fill_manual(values=pops2colour, labels=pops2name)+
+  theme(legend.position="bottom")
+
+setwd(datapath)
+filetosave = paste(datapath,'\\roh_all.csv', sep='')
+write.table(barplot_table, file = filetosave, sep = "\t", col.names = TRUE)
+
+```
+6. Repeat without the 3 outliers
+```{r}
+outliers = c ("MER2", "MER14", "MER11")
+for (j in outliers){
+  ind_rohs$pop[ind_rohs$IID==j]="NOT ASSIGNED"
+  ind_rohsnum$pop[ind_rohsnum$IID==j]="NOT ASSIGNED"
+}
+
+
+#create summary dataset
+rohlen=c()
+pop= c()
+for (i in 1:length(pops2name)){
+  for (j in 1:length(len_catg)){
+    pop= c(pop, pops2name[i])
+    rohlen= c(rohlen, len_catg[j])
+  }
+}
+barplot_table <- data.frame(rohlen,pop)
+#add mean and stdev columns
+barplot_table$mean = 0
+barplot_table$stdev= 0
+barplot_table$nummean = 0
+barplot_table$numstdev= 0
+barplot_table$repr= 0
+
+#assgin values
+for (i in 1:length(pops2name)){
+  pop = pops2name[i]
+  for (j in 1:length(len_catg)){
+    #rohs length
+    listpop=ind_rohs[,len_catg[j]][ind_rohs$pop==pop]
+    barplot_table$mean[barplot_table$pop== pop & barplot_table$rohlen == len_catg[j]] = mean(listpop)
+    barplot_table$stdev[barplot_table$pop== pop & barplot_table$rohlen == len_catg[j]] = sd(listpop)
+    #rohs num
+    listpop=ind_rohsnum[,len_catg[j]][ind_rohsnum$pop==pop]
+    barplot_table$nummean[barplot_table$pop== pop & barplot_table$rohlen == len_catg[j]] = mean(listpop)
+    barplot_table$numstdev[barplot_table$pop== pop & barplot_table$rohlen == len_catg[j]] = sd(listpop)
+    #% individuals
+    barplot_table$repr[barplot_table$pop== pop & barplot_table$rohlen == len_catg[j]] = 100 * length(listpop[listpop!=0]) /(length(listpop))
+  }
+}
+
+
+```
+
+6.2 plot
+```{r}
+barplot_table$rohlen <- factor(barplot_table$rohlen, levels = len_catg)
+barplot_table$pop <- factor(barplot_table$pop, levels = pops2name)
+
+ggplot(barplot_table, aes(x=as.factor(rohlen), y=mean, fill=pop)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='black') +
+  geom_errorbar(aes(ymin=mean-stdev, ymax=mean+stdev), width=.2,position=position_dodge(.9))+
+  labs( x = "ROH length category (Mb)",  y= "mean total ROH length (Mb)")+
+  scale_fill_manual(values=pops2colour, labels=pops2name)+
+  theme(legend.position="bottom")
+
+ggplot(barplot_table, aes(x=as.factor(rohlen), y=nummean, fill=pop)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='black') +
+  geom_errorbar(aes(ymin=nummean-numstdev, ymax=nummean+numstdev), width=.2,position=position_dodge(.9))+
+  labs( x = "ROH length category (Mb)",  y= "mean total number of ROH")+
+  scale_fill_manual(values=pops2colour, labels=pops2name)+
+  theme(legend.position="bottom")
+
+ggplot(barplot_table, aes(x=as.factor(rohlen), y=repr, fill=pop)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='black') +
+  labs( x = " ROH length category (Mb)",  y= "% of individuals")+
+  scale_fill_manual(values=pops2colour, labels=pops2name)+
+  theme(legend.position="bottom")
+
+setwd(datapath)
+filetosave = paste(datapath,'\\roh_sub.csv', sep='')
+write.table(barplot_table, file = filetosave, sep = "\t", col.names = TRUE)
+
+```
+
+###IBD analyses
+
+8. open file  and group
+```{r}
+ibdtable2=separate(ibdtable, id, c("pop", "id"), sep="_(?=[^_]+$)")
+ #save just comparisons within pop
+
+ibdtable$p1='UNASSIGNED'
+ibdtable$p2='UNASSIGNED'
+
+#assign the location group (group them)
+for (i in 1:length(pops3)){
+  subpop = pops3[[i]]
+  for (j in subpop){
+    ibdtable$p1[ibdtable$pop==j] = pops2name3[i]
+    ibdtable$p2[ibdtable$pop2==j] = pops2name3[i]
+  }  
+}
+#save the pairs of IBD within the same population
+subibdtable = ibdtable[ ibdtable$p1== ibdtable$p2,]
+
+#assign lentgh group
+len_catg = c("<0.5","0.5-1","1-2","2-4","4-8", "8-16", ">16")
+#assign the value
+subibdtable$len_group="<0.5"
+for (i in 1:length(subibdtable)){
+  subibdtable$len_group[subibdtable$lenmb > mblim[i]] = len_catg[i+1]
+}
+len_catg = len_catg[2:7]
+
+
+#check for all individuals in the subset
+IID = unique(subibdtable$id)
+IID = c(IID, unique(subibdtable$id2))
+IID = unique (IID)
+
+#Create new tables: ibd len + ibd num
+ind_ibd <-data.frame(IID)
+
+#for each IND create a column
+for(i in 1:length(len_catg)){
+  ind_ibd[,len_catg[i]]=0
+}
+
+ind_ibd$pop='unass'
+ind_ibdnum = ind_ibd
+
+
+#assign the total ibd total lenght (by group and toh group lenght) to each individual - add pop!
+for (i in IID){
+  for(j in 1:length(len_catg)){
+  ibds = subibdtable$lenmb[subibdtable$id==i & subibdtable$len_group==len_catg[j]]
+  ibds2 = subibdtable$lenmb[subibdtable$id2==i & subibdtable$len_group==len_catg[j]]
+  ibds = c(ibds, ibds2)
+  ind_ibd[,len_catg[j]][ind_ibd$IID==i] = sum(ibds)
+  ind_ibdnum[,len_catg[j]][ind_ibdnum$IID==i] = length(ibds)
+  }
+  pop = c(subibdtable$p1[subibdtable$id==i][1],subibdtable$p1[subibdtable$id2==i][1])
+  pop=na.omit(pop)[1]
+  ind_ibd$pop[ind_ibd$IID==i]=pop
+  ind_ibdnum$pop[ind_ibdnum$IID==i]=pop
+}
+
+
+
+ibdlen=c()
+pop= c()
+for (i in 1:length(pops2name3)){
+  for (j in 1:length(len_catg)){
+    pop= c(pop, pops2name3[i])
+    ibdlen= c(ibdlen, len_catg[j])
+  }
+}
+
+ibdbarplot_table <- data.frame(ibdlen,pop)
+#add mean and stdev columns
+ibdbarplot_table$mean = 0
+ibdbarplot_table$stdev= 0
+ibdbarplot_table$nummean = 0
+ibdbarplot_table$numstdev= 0
+ibdbarplot_table$repr= 0
+
+#assgin values
+for (i in 1:length(pops2name3)){
+  pop = pops2name[i]
+  #print(pop)
+  for (j in 1:length(len_catg)){
+    #rohs length
+    listpop=ind_ibd[,len_catg[j]][ind_ibd$pop==pop]
+    ibdbarplot_table$mean[ibdbarplot_table$pop== pop & ibdbarplot_table$ibdlen == len_catg[j]] = mean(listpop)
+    ibdbarplot_table$stdev[ibdbarplot_table$pop== pop & ibdbarplot_table$ibdlen == len_catg[j]] = sd(listpop)
+    #rohs num
+    listpop=ind_ibdnum[,len_catg[j]][ind_ibdnum$pop==pop]
+    ibdbarplot_table$nummean[ibdbarplot_table$pop== pop & ibdbarplot_table$ibdlen == len_catg[j]] = mean(listpop)
+    ibdbarplot_table$numstdev[ibdbarplot_table$pop== pop & ibdbarplot_table$ibdlen == len_catg[j]] = sd(listpop)
+    #% individuals
+    ibdbarplot_table$repr[ibdbarplot_table$pop== pop & ibdbarplot_table$ibdlen == len_catg[j]] = 100 * length(listpop[listpop!=0]) /(length(listpop))
+  }
+}
+
+```
+```{r}
+#PLOT
+
+ibdbarplot_table$ibdlen <- factor(ibdbarplot_table$ibdlen, levels = len_catg)
+ibdbarplot_table$pop <- factor(ibdbarplot_table$pop, levels = pops2name3)
+
+
+ggplot(ibdbarplot_table, aes(x=as.factor(ibdlen), y=mean, fill=pop)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='black') +
+  geom_errorbar(aes(ymin=mean-stdev, ymax=mean+stdev), width=.2,position=position_dodge(.9))+
+  labs( x = "IBD length category (Mb)",  y= "mean total IBD length (Mb)")+
+  scale_fill_manual(values=pops2colour3, labels=pops2name3)+
+  theme(legend.position="bottom")
+
+ggplot(ibdbarplot_table, aes(x=as.factor(ibdlen), y=nummean, fill=pop)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='black') +
+  geom_errorbar(aes(ymin=nummean-numstdev, ymax=nummean+numstdev), width=.2,position=position_dodge(.9))+
+  labs( x = "IBD length category (Mb)",  y= "mean total number of IBD")+
+  scale_fill_manual(values=pops2colour3, labels=pops2name3)+
+  theme(legend.position="bottom")
+
+ggplot(ibdbarplot_table, aes(x=as.factor(ibdlen), y=repr, fill=pop)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='black') +
+  labs( x = "IBD length category (Mb)",  y= "% of individuals")+
+  scale_fill_manual(values=pops2colour3, labels=pops2name3)+
+  theme(legend.position="bottom")
+
+```
+
+9. save data
+```{r}
+setwd(datapath)
+filetosave = paste(datapath,'\\ibd_pib_all.csv', sep='')
+write.table(ibdbarplot_table, file = filetosave, sep = "\t", col.names = TRUE)
+
+```
+10. repeat without outliers
+```{r}
+#remove ROH outliers
+
+for (j in outliers){
+  ind_ibd$pop[ind_ibd$IID==j]="NOT ASSIGNED"
+  ind_ibdnum$pop[ind_ibdnum$IID==j]="NOT ASSIGNED"
+}
+
+
+ibdlen=c()
+pop= c()
+for (i in 1:length(pops2name3)){
+  for (j in 1:length(len_catg)){
+    pop= c(pop, pops2name3[i])
+    ibdlen= c(ibdlen, len_catg[j])
+  }
+}
+
+ibdbarplot_table <- data.frame(ibdlen,pop)
+#add mean and stdev columns
+ibdbarplot_table$mean = 0
+ibdbarplot_table$stdev= 0
+ibdbarplot_table$nummean = 0
+ibdbarplot_table$numstdev= 0
+ibdbarplot_table$repr= 0
+
+#assgin values
+for (i in 1:length(pops2name3)){
+  pop = pops2name[i]
+  #print(pop)
+  for (j in 1:length(len_catg)){
+    #rohs length
+    listpop=ind_ibd[,len_catg[j]][ind_ibd$pop==pop]
+    ibdbarplot_table$mean[ibdbarplot_table$pop== pop & ibdbarplot_table$ibdlen == len_catg[j]] = mean(listpop)
+    ibdbarplot_table$stdev[ibdbarplot_table$pop== pop & ibdbarplot_table$ibdlen == len_catg[j]] = sd(listpop)
+    #rohs num
+    listpop=ind_ibdnum[,len_catg[j]][ind_ibdnum$pop==pop]
+    ibdbarplot_table$nummean[ibdbarplot_table$pop== pop & ibdbarplot_table$ibdlen == len_catg[j]] = mean(listpop)
+    ibdbarplot_table$numstdev[ibdbarplot_table$pop== pop & ibdbarplot_table$ibdlen == len_catg[j]] = sd(listpop)
+    #% individuals
+    ibdbarplot_table$repr[ibdbarplot_table$pop== pop & ibdbarplot_table$ibdlen == len_catg[j]] = 100 * length(listpop[listpop!=0]) /(length(listpop))
+  }
+}
+
+
+setwd(datapath)
+filetosave = paste(datapath,'\\ibd_pib_sub.csv', sep='')
+write.table(ibdbarplot_table, file = filetosave, sep = "\t", col.names = TRUE)
+
+```
+
+
+```{r}
+#PLOT
+
+ibdbarplot_table$ibdlen <- factor(ibdbarplot_table$ibdlen, levels = len_catg)
+ibdbarplot_table$pop <- factor(ibdbarplot_table$pop, levels = pops2name3)
+
+
+ggplot(ibdbarplot_table, aes(x=as.factor(ibdlen), y=mean, fill=pop)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='black') +
+  geom_errorbar(aes(ymin=mean-stdev, ymax=mean+stdev), width=.2,position=position_dodge(.9))+
+  labs( x = "IBD length category (Mb)",  y= "mean total IBD length (Mb)")+
+  scale_fill_manual(values=pops2colour3, labels=pops2name3)+
+  theme(legend.position="bottom")
+
+ggplot(ibdbarplot_table, aes(x=as.factor(ibdlen), y=nummean, fill=pop)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='black') +
+  geom_errorbar(aes(ymin=nummean-numstdev, ymax=nummean+numstdev), width=.2,position=position_dodge(.9))+
+  labs( x = "IBD length category (Mb)",  y= "mean total number of IBD")+
+  scale_fill_manual(values=pops2colour3, labels=pops2name3)+
+  theme(legend.position="bottom")
+
+ggplot(ibdbarplot_table, aes(x=as.factor(ibdlen), y=repr, fill=pop)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='black') +
+  labs( x = "IBD length category (Mb)",  y= "% of individuals")+
+  scale_fill_manual(values=pops2colour3, labels=pops2name3)+
+  theme(legend.position="bottom")
+
+```
+11.compare (files were merged in excel)
+```{r}
+setwd(datapath)
+ibdvsroh = 'rohsvsibd.csv'
+ibdrohtable= read.table(ibdvsroh, header= T, sep=';')
+groups = unique(ibdrohtable$pop)
+groups = c("Mercheros ROHs", "Mercheros ROHs subset", "Mercheros", "Mercheros subset","Spain ROHs","Spain","Spain peninsula","Basques ROHs", "Basques")
+
+ibdrohtable2=ibdrohtable[ibdrohtable$ibdlen != '0.5-1',]
+
+ibdrohtable = ibdrohtable2[ibdrohtable2$pop != "Spain peninsula",]
+
+ibdrohtable$ibdlen <- factor(ibdrohtable$ibdlen, levels = len_catg[2:6])
+ibdrohtable$pop <- factor(ibdrohtable$pop, levels = groups)
+groups = c("Mercheros ROHs", "Mercheros ROHs subset", "Mercheros IBD", "Mercheros IBD subset","Spain ROHs","Spain IBD ","Spain peninsula IBD","Basques ROHs", "Basques IBD")
+colour3 = c(redd, pink, oran, yell, dblue, blue, purp, dgree, gree)
+groups = c("Mercheros ROHs", "Mercheros ROHs subset", "Mercheros IBD", "Mercheros IBD subset","Spain ROHs","Spain IBD ","Basques ROHs", "Basques IBD")
+colour3 = c(redd, pink, oran, yell, dblue, blue, dgree, gree)
+
+
+ggplot(ibdrohtable, aes(x=as.factor(ibdlen), y=mean, fill=pop)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='black') +
+  geom_errorbar(aes(ymin=mean-stdev, ymax=mean+stdev), width=.2,position=position_dodge(.9))+
+  labs( x = "length category (Mb)",  y= "mean total length (Mb)")+
+  scale_fill_manual(values=colour3, labels=groups)+
+  theme(legend.position="bottom")
+
+ggplot(ibdrohtable, aes(x=as.factor(ibdlen), y=nummean, fill=pop)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='black') +
+  geom_errorbar(aes(ymin=nummean-numstdev, ymax=nummean+numstdev), width=.2,position=position_dodge(.9))+
+  labs( x = "length category (Mb)",  y= "mean total number")+
+  scale_fill_manual(values=colour3, labels=groups)+
+  theme(legend.position="bottom")
+
+ggplot(ibdrohtable, aes(x=as.factor(ibdlen), y=repr, fill=pop)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='black') +
+  labs( x = "length category (Mb)",  y= "% of individuals")+
+  scale_fill_manual(values=colour3, labels=groups)+
+  theme(legend.position="bottom")
+
+```

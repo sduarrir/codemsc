@@ -1,0 +1,119 @@
+
+
+#samples contamination check#######
+
+##heterozygosity vs missing data
+
+1. Import modules & files
+```{r}
+library(tidyr)
+datapath = '~\\masterBIOINFO\\practiques_tesis\\practiques\\data\\'
+het_file = paste(datapath, 'plate_1_2_3_11122019_autosomes_geno_mind_hwe_maf_het.het', sep='')
+miss_file = paste(datapath, 'plate_1_2_3_11122019_autosomes_geno_mind_hwe_maf_missing.imiss', sep='')
+
+het_tb=read.table(het_file, header= T)
+miss_tb=read.table(miss_file, header= T)
+het_tb$H <-  1- (het_tb$O.HOM. /het_tb$N.NM.)
+```
+
+2. Heterozygosity mean and stdev 
+```{r}
+het_mean = mean(het_tb$H)
+het_stdev = sd(het_tb$H)
+```
+
+3. plot
+```{r}
+plot (miss_tb$F_MISS, het_tb$H, ylab="Heterozygosity", xlab="Missing data", ylim= c(0,0.35), xlim = c(0, 0.1))
+abline(v=0.1, lty=2, col='red')
+
+tophet= het_mean+3*het_stdev
+bothet= het_mean-3*het_stdev
+
+abline(h=tophet, col='red', lty=2)
+abline(h=bothet, col='red', lty=2)
+
+
+#
+out = het_tb[het_tb$H < bothet,]
+filt_data = het_tb[het_tb$F < tophet,]
+````
+
+
+
+##Batch effect
+
+4. import files 
+```{r}
+#get % for each PC 
+values_file = paste(datapath, 'plate_1_2_3_11122019_autosomes_geno_mind_hwe_maf_ld_pca.eval', sep='')
+values = read.table(values_file, header= F)[,1]
+relval = values*100/sum(values)
+PC1 = paste('PC1 (', round(relval[1], 3),'%)', sep='')
+PC2 = paste('PC2 (', round(relval[2], 3),'%)', sep='')
+PC3 = paste('PC3 (', round(relval[3], 3),'%)', sep='')
+
+
+#table file
+vectors_file = paste(datapath, 'plate_1_2_3_11122019_autosomes_geno_mind_hwe_maf_ld_pca.evec', sep='')
+vectors_tb=read.table(vectors_file, header= F)
+```
+
+5. add colours by pop (check if theres some populations grouped)
+```{r}
+#leave just ind id
+vectors_tb=separate(vectors_tb, V1, c("pop", "id"), sep=":")
+
+# Create new column filled with default colour
+vectors_tb$colour1="black"
+# Set new column values to aassagin a colour per population
+populations=unique(vectors_tb$pop)
+npop= length(populations)
+popcol= c("red","limegreen", "lightgreen", "dodgerblue","lawngreen","PURPLE", 
+          "yellow","orange","CORAL","darkturquoise","hotpink","aquamarine")
+
+for (i in 1:length(populations)){
+  vectors_tb$colour1[vectors_tb$pop==populations[i]]=popcol[i]
+}
+
+plot (vectors_tb$V2, vectors_tb$V3, col=vectors_tb$colour1,xlab= PC1,ylab= PC2, pch=20)
+#plot (vectors_tb$V4, vectors_tb$V3, col=vectors_tb$colour2, xlab= PC3,ylab= PC2, pch=20)
+legend(-0.05,0.221, populations, pch=rep(20,npop), col=popcol, cex=0.9) 
+```
+6. group by plate
+```{r}
+#groups files
+tab1_file = paste(datapath, 'sample_table_plate1.txt', sep='')
+tab2_file = paste(datapath, 'sample_table_plate2.txt', sep='')
+tab3_file = paste(datapath, 'sample_table_plate3.txt', sep='')
+tab1=read.table(tab1_file, header= T, sep = '\t')
+tab2=read.table(tab2_file, header= T, sep = '\t')
+tab3=read.table(tab3_file, header= T, sep = '\t')
+#save list of individuals
+plate1= gsub(".CEL", "", tab1$Sample.Filename)
+plate2= gsub(".CEL", "", tab2$Sample.Filename)
+plate3= gsub(".CEL", "", tab3$Sample.Filename)
+
+#colours
+blue = rgb(128, 156, 200, maxColorValue = 255)
+pink = rgb(208, 146, 166, maxColorValue = 255)
+yell = rgb(236, 214, 052, maxColorValue = 255)
+
+vectors_tb$colour2="black"
+vectors_tb[vectors_tb$id %in% plate1,]$colour2=blue
+vectors_tb[vectors_tb$id %in% plate2,]$colour2=pink
+vectors_tb[vectors_tb$id%in% plate3,]$colour2=yell
+```
+
+6.plot to check for batch effect
+```{r}
+#pca1
+plot (vectors_tb$V2, vectors_tb$V3, col=vectors_tb$colour2, xlab= PC1,ylab= PC2, pch=20)
+legend(-0.02250,.210, c("plate1","plate2","plate3"), pch=c(20,20, 20), 
+       col=c(blue, pink, yell)) 
+
+ 
+
+````
+
+
